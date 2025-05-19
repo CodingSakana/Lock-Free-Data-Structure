@@ -95,10 +95,10 @@ Lock-Free-Data-Structure/
 
 ## 📌 Future Work
 
-- [] Lock-Free Queue
-- [] Hazard Pointer support (for ABA mitigation)
-- [] Wait-free variants
-- [] Performance benchmarks
+- [ ] Lock-Free Queue
+- [ ] Hazard Pointer support (for ABA mitigation)
+- [ ] Wait-free variants
+- [ ] Performance benchmarks
 
 ---
 
