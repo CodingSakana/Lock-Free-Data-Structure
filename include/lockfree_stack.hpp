@@ -18,8 +18,8 @@ private:
     
 public:
     void push(T const& value);
-    std::optional<T> pop();
-        // std::optional<T> 表示一个“可能有值”的 T 类型变量。
+    std::optional<std::shared_ptr<T>> pop();
+        // std::optional<std::shared_ptr<T>> 表示一个“可能有值”的 std::shared_ptr<T> 类型变量。
         // 用于表示 pop() 等函数在失败时（如栈为空）不抛异常，而是返回一个空值（std::nullopt）。
     bool empty() const;
 };
@@ -34,13 +34,13 @@ void LockFreeStack<T>::push(T const& value){
 }
 
 template<typename T>
-std::optional<T> LockFreeStack<T>::pop(){
+std::optional<std::shared_ptr<T>> LockFreeStack<T>::pop(){
     auto oldHead = head.load();
     while(oldHead){
         if(head.compare_exchange_weak(oldHead, oldHead->next)){
             return oldHead->data;
         }
-        /   / 否则 CAS 失败，oldHead 被自动更新为当前的 head
+            // 否则 CAS 失败, oldHead 被自动更新为当前的 head
     }
     return std::nullopt;
 }
