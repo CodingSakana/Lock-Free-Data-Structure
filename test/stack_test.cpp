@@ -3,7 +3,7 @@
 #include <vector>
 #include <future>
 #include <unordered_set>
-#include "../include/lockfree_stack.hpp"
+#include "stack_v1.0.hpp"
 
 void singleThreadTest() {
     LockFreeStack<int> stack;
