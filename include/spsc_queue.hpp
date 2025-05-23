@@ -1,3 +1,7 @@
+/*
+这是一个环形的 spsc 的无锁队列
+*/
+
 #pragma once
 #include <atomic>
 #include <cstddef>

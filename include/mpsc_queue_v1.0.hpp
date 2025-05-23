@@ -1,3 +1,7 @@
+/*
+mpsc队列实现
+*/
+
 #pragma once
 
 #include <atomic>
