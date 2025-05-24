@@ -40,7 +40,6 @@ std::optional<std::shared_ptr<T>> LockFreeStack<T>::pop(){
         if(head.compare_exchange_weak(oldHead, oldHead->next)){ // 注意！std::atomic<std::shared_ptr<Node>> 比较的是控制块指针，并不会出现ABA的问题。
             return oldHead->data;
         }
-            // 否则 CAS 失败, oldHead 被自动更新为当前的 head
     }
     return std::nullopt;
 }

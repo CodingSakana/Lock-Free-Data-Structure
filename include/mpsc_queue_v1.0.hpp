@@ -55,4 +55,3 @@ std::optional<T> MPSCQueue<T>::dequeue() {
 
     return result;
 }
-

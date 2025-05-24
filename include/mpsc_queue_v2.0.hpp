@@ -1,5 +1,5 @@
 /*
-这个版本在 v1.0 的基础上添加了 内存池复用 和 内存对齐防止 false sharing。但是目前未添加 hazard point。可能会出现 freelist 的 ABA问题。即将修复。
+这个版本在 v1.0 的基础上添加了 内存池复用 和 内存对齐防止 false sharing。但是目前未添加 hazard point。可能会出现 freelist 的 ABA 问题。即将修复。
 */
 
 #pragma once

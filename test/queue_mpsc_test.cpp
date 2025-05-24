@@ -5,7 +5,7 @@
 #include <chrono>
 #include <unordered_map>
 #include <mutex>
-#include "mpsc_queue.hpp"
+#include "mpsc_queue_v2.0.hpp"
 
 struct Item {
     int producer_id;
