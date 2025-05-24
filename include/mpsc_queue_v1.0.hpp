@@ -17,7 +17,8 @@ private:
         std::atomic<Node*> next;
 
         Node(): data(std::nullopt), next(nullptr){}
-        explicit Node(T&& value): data(std::forward<T>(value)), next(nullptr) {}
+        template<typename U>  
+        explicit Node(U&& value): data(std::forward<U>(value)), next(nullptr) {}
     };
 
     std::atomic<Node*> head;
@@ -29,15 +30,17 @@ public:
         head = dummy;
         tail.store(dummy);
     }
-    ~MPSCQueue(){}
+    ~MPSCQueue(){delete head.load();}
 
-    void enqueue(T&& value);
+    template<typename U>
+    void enqueue(U&& value);
     std::optional<T> dequeue();
 };
 
 template<typename T>
-void MPSCQueue<T>::enqueue(T&& value){      // 多个生产者
-    Node* newNode = new Node(std::forward<T>(value));
+template<typename U>
+void MPSCQueue<T>::enqueue(U&& value){      // 多个生产者
+    Node* newNode = new Node(std::forward<U>(value));
     auto prev = tail.exchange(newNode, std::memory_order_relaxed);     // 很华丽的写法
     prev->next.store(newNode, std::memory_order_release);       // 确保写入数据对别的线程可见：在最后写共享指针时加 release
 }

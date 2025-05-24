@@ -1,7 +1,3 @@
-// hazard_pointer.hpp — industrial‑grade hazard pointer manager integrated with thread‑local RetiredNode pool
-// All lines marked with "// MOD:" are modifications or additions in response to the code review.
-// This file depends on memory_pool.hpp (ThreadLocalPool) placed in the same include path.
-
 #pragma once
 
 #include <atomic>
@@ -11,14 +7,42 @@
 #include <array>
 #include <cassert>
 #include <stdexcept>
-#include "memory_pool.hpp"
 
-namespace hp {
+// ==================== ThreadLocalPool ====================
+template <typename T>
+class ThreadLocalPool{
+public:
+    static constexpr std::size_t kBatchAllocate = 64;
+    T* acquire(){
+        if (!g_freelist_){
+            for(int i = 0; i < kBatchAllocate; ++i){
+                T* new_node = new T();
+                new_node->next = g_freelist_;
+                g_freelist_ = new_node;
+            }
+        }
+        T* node = g_freelist_;
+        g_freelist_ = g_freelist_->next;
+        return node;
+    }
+
+    void release(T* node){
+        node->next = g_freelist_;
+        g_freelist_ = node;
+    }
+
+private:
+    // 每线程一个 freelist，避免锁
+    thread_local static T* g_freelist_;
+};
+
+template <typename T>
+thread_local T* ThreadLocalPool<T>::g_freelist_ = nullptr;
 
 // ===================== configuration =====================
-inline constexpr std::size_t kMaxThreads       = 256;   // 最大线程数
-inline constexpr std::size_t kHazardsPerThread = 6;     // 每个线程的最大风险指针数
-inline constexpr std::size_t kScanThreshold    = 32;
+inline constexpr std::size_t kMaxThreads        = 256;   // 最大线程数
+inline constexpr std::size_t kHazardsPerThread  = 6;     // 每个线程的最大风险指针数
+inline constexpr std::size_t kScanThreshold     = 32;
 
 // ===================== hazard slot & owner =====================
 struct alignas(64) HazardSlot {                // 64 位对齐
@@ -39,6 +63,7 @@ struct alignas(64) HazardRow {
 };
 inline HazardRow g_slots[kMaxThreads];
 
+namespace hp {
 // ===================== hazard manager =====================
 class HazardManager {
 using Deleter = void(*)(void*);
@@ -59,7 +84,7 @@ private:
     };
 
     // thread‑local pool instance for RetiredNode
-    static inline memory::ThreadLocalPool<RetiredNode> g_retired_pool;
+    static inline ThreadLocalPool<RetiredNode> g_retired_pool;
     static inline thread_local ThreadExitCleaner cleaner;
 
     // thread‑local bookkeeping ------------------------------
