@@ -30,21 +30,21 @@ private:
         
         node()
         {
-            data.store(nullptr, std::memory_order_relaxed);
+            data.store(nullptr);
             node_counter new_count;
             new_count.internal_count=0;
             new_count.external_counters=2;
-            count.store(new_count, std::memory_order_relaxed);
+            count.store(new_count);
             counted_node_ptr temp;
             temp.external_count = 0;
             temp.ptr = nullptr;
-            next.store(temp, std::memory_order_relaxed);
+            next.store(temp);
         }
         
         void release_ref()
         {
             node_counter old_counter=
-                count.load(std::memory_order_relaxed);
+                count.load();
             node_counter new_counter;
             do
             {
@@ -52,9 +52,7 @@ private:
                 --new_counter.internal_count;
             }
             while(!count.compare_exchange_strong(
-                      old_counter,new_counter,
-                      std::memory_order_acq_rel,
-                      std::memory_order_relaxed));
+                      old_counter,new_counter));
             if(!new_counter.internal_count &&
                !new_counter.external_counters)
             {
@@ -74,9 +72,7 @@ private:
             ++new_counter.external_count;
         }
         while(!counter.compare_exchange_strong(
-                  old_counter,new_counter,
-                  std::memory_order_acq_rel,
-                  std::memory_order_relaxed));
+                  old_counter,new_counter));
         old_counter.external_count = new_counter.external_count;
     }
 
@@ -85,7 +81,7 @@ private:
         node* const ptr=old_node_ptr.ptr;
         int const count_increase=old_node_ptr.external_count-2;
         node_counter old_counter=
-            ptr->count.load(std::memory_order_relaxed);
+            ptr->count.load();
         node_counter new_counter;
         do
         {
@@ -94,9 +90,7 @@ private:
             new_counter.internal_count+=count_increase;
         }
         while(!ptr->count.compare_exchange_strong(
-                  old_counter, new_counter,
-                  std::memory_order_acq_rel,
-                  std::memory_order_relaxed));
+                  old_counter, new_counter));
         if(!new_counter.internal_count &&
            !new_counter.external_counters)
         {
@@ -108,9 +102,7 @@ private:
                       counted_node_ptr const &new_tail)
     {
         node* const current_tail_ptr=old_tail.ptr;
-        while(!tail.compare_exchange_weak(old_tail,new_tail,
-                            std::memory_order_release,
-                            std::memory_order_relaxed) &&
+        while(!tail.compare_exchange_weak(old_tail,new_tail) &&
                             old_tail.ptr==current_tail_ptr);
         if(old_tail.ptr==current_tail_ptr)
             free_external_counter(old_tail);
@@ -120,14 +112,14 @@ private:
 
 public:
     lock_free_queue():
-        head({1, new node}), tail(head.load(std::memory_order_relaxed))
+        head({1, new node}), tail(head.load())
     {}
     lock_free_queue(const lock_free_queue& other) = delete;
     lock_free_queue& operator= (const lock_free_queue& other) = delete;
     ~lock_free_queue()
     {
         while(pop());   // 不断弹出并丢弃
-        counted_node_ptr const node = head.load(std::memory_order_relaxed);
+        counted_node_ptr const node = head.load();
         delete node.ptr;   // 删除 dummy 节点
     }
 
@@ -137,21 +129,17 @@ public:
         counted_node_ptr new_next;
         new_next.ptr=new node;
         new_next.external_count=1;
-        counted_node_ptr old_tail=tail.load(std::memory_order_acquire);
+        counted_node_ptr old_tail=tail.load();
         for(;;)
         {
             increase_external_count(tail,old_tail);
             T* old_data=nullptr;
             if(old_tail.ptr->data.compare_exchange_strong(
-                    old_data, new_data.get(),
-                    std::memory_order_release,
-                    std::memory_order_relaxed))
+                    old_data, new_data.get()))
             {
                 counted_node_ptr old_next={0};
             if(!old_tail.ptr->next.compare_exchange_strong(
-                    old_next,new_next,
-                    std::memory_order_release,
-                    std::memory_order_relaxed))
+                    old_next,new_next))
                 {
                     delete new_next.ptr;
                     new_next=old_next;
@@ -164,9 +152,7 @@ public:
             {
                 counted_node_ptr old_next={0};
                 if(old_tail.ptr->next.compare_exchange_strong(
-                       old_next,new_next,
-                       std::memory_order_release,
-                       std::memory_order_relaxed))
+                       old_next,new_next))
                 {
                     old_next=new_next;
                     new_next.ptr=new node;
@@ -178,7 +164,7 @@ public:
     
     std::unique_ptr<T> pop()
     {
-        counted_node_ptr old_head=head.load(std::memory_order_relaxed);
+        counted_node_ptr old_head=head.load();
         for(;;)
         {
             increase_external_count(head,old_head);
@@ -186,8 +172,8 @@ public:
 
             /**/
             // 先抓一次 tail 和 next，避免每次重新加载
-            counted_node_ptr old_tail = tail.load(std::memory_order_acquire);
-            counted_node_ptr next     = ptr->next.load(std::memory_order_acquire);
+            counted_node_ptr old_tail = tail.load();
+            counted_node_ptr next     = ptr->next.load();
 
             // 如果 head==tail，可能队列真的空，也可能 tail 落后
             if (ptr == old_tail.ptr)
@@ -210,13 +196,11 @@ public:
                 ptr->release_ref();
                 return std::unique_ptr<T>();
            }
-            counted_node_ptr next = ptr->next.load(std::memory_order_acquire);
+            counted_node_ptr next = ptr->next.load();
             /* ============================*/
             
             if (head.compare_exchange_strong(
-                    old_head, next,
-                    std::memory_order_acquire,
-                    std::memory_order_relaxed))
+                    old_head, next))
             {
                 T* const res=ptr->data.exchange(nullptr);
                 free_external_counter(old_head);
@@ -228,18 +212,18 @@ public:
 
     std::size_t length() const{
         std::size_t length = 0;
-        counted_node_ptr h = head.load(std::memory_order_relaxed);
+        counted_node_ptr h = head.load();
         node* ptr = h.ptr;
         while(ptr){
-            ptr = ptr->next.load(std::memory_order_relaxed).ptr;
+            ptr = ptr->next.load().ptr;
             length++;
         }
         return length - 1;
     }
 
     bool empty() const{
-        return head.load(std::memory_order_relaxed)
-        .ptr->next.load(std::memory_order_relaxed)
+        return head.load()
+        .ptr->next.load()
         .ptr == nullptr;
     }
 };

@@ -3,7 +3,7 @@
 #include <atomic>
 #include <chrono>
 #include <cassert>
-#include "spsc_queue.hpp"
+#include "lock_spsc_queue.hpp"
 
 constexpr size_t N = 1024;
 SPSCQueue<int, N> queue;

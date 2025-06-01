@@ -5,7 +5,7 @@
 #include <optional>
 
 template<typename T>
-class LockFreeStack{
+class MPMCStack{
 private:
     struct Node{
         std::shared_ptr<T> data;
@@ -25,7 +25,7 @@ public:
 };
 
 template<typename T>
-void LockFreeStack<T>::push(T const& value){
+void MPMCStack<T>::push(T const& value){
     auto newNode = std::make_shared<Node>(value);
     newNode->next = head.load();
     while(!head.compare_exchange_weak(newNode->next, newNode));
@@ -34,7 +34,7 @@ void LockFreeStack<T>::push(T const& value){
 }
 
 template<typename T>
-std::optional<std::shared_ptr<T>> LockFreeStack<T>::pop(){
+std::optional<std::shared_ptr<T>> MPMCStack<T>::pop(){
     auto oldHead = head.load();
     while(oldHead){
         if(head.compare_exchange_weak(oldHead, oldHead->next)){ // 注意！std::atomic<std::shared_ptr<Node>> 比较的是控制块指针，并不会出现ABA的问题。
@@ -45,7 +45,7 @@ std::optional<std::shared_ptr<T>> LockFreeStack<T>::pop(){
 }
 
 template<typename T>
-bool LockFreeStack<T>::empty() const{
+bool MPMCStack<T>::empty() const{
     return !head.load();
         // 注意：仅表示当前时刻 head 是否为 nullptr，不保证之后不变
 }

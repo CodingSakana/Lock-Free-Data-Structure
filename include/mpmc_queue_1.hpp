@@ -1,4 +1,4 @@
-// 这个_1相比于原版用的是无其他线程 “帮忙” 的做法
+// 这个版本尝试加入内存对齐，但是好像不太对
 
 #pragma once
 
@@ -28,7 +28,7 @@ private:
     {
         std::atomic<T*> data;
         std::atomic<node_counter> count;
-        counted_node_ptr next;
+        std::atomic<counted_node_ptr> next;
         
         node()
         {
@@ -37,8 +37,10 @@ private:
             new_count.internal_count=0;
             new_count.external_counters=2;
             count.store(new_count, std::memory_order_relaxed);
-            next.external_count = 0;
-            next.ptr = nullptr;
+            counted_node_ptr temp;
+            temp.external_count = 0;
+            temp.ptr = nullptr;
+            next.store(temp, std::memory_order_relaxed);
         }
         
         void release_ref()
@@ -137,21 +139,42 @@ public:
         counted_node_ptr new_next;
         new_next.ptr=new node;
         new_next.external_count=1;
-        counted_node_ptr old_tail=tail.load();
+        counted_node_ptr old_tail=tail.load(std::memory_order_acquire);
         for(;;)
         {
             increase_external_count(tail,old_tail);
             T* old_data=nullptr;
             if(old_tail.ptr->data.compare_exchange_strong(
-                   old_data,new_data.get()))
+                    old_data, new_data.get(),
+                    std::memory_order_release,
+                    std::memory_order_relaxed))
             {
-                old_tail.ptr->next=new_next;
-                old_tail=tail.exchange(new_next);
-                free_external_counter(old_tail);
+                counted_node_ptr old_next={0};
+            if(!old_tail.ptr->next.compare_exchange_strong(
+                    old_next,new_next,
+                    std::memory_order_release,
+                    std::memory_order_relaxed))
+                {
+                    delete new_next.ptr;
+                    new_next=old_next;
+                }
+                set_new_tail(old_tail, new_next);
                 new_data.release();
                 break;
             }
-            old_tail.ptr->release_ref();
+            else
+            {
+                counted_node_ptr old_next={0};
+                if(old_tail.ptr->next.compare_exchange_strong(
+                       old_next,new_next,
+                       std::memory_order_release,
+                       std::memory_order_relaxed))
+                {
+                    old_next=new_next;
+                    new_next.ptr=new node;
+                }
+                set_new_tail(old_tail, old_next);
+            }
         }
     }
     
@@ -162,12 +185,40 @@ public:
         {
             increase_external_count(head,old_head);
             node* const ptr=old_head.ptr;
-            if(ptr==tail.load().ptr)
+
+            /**/
+            // 先抓一次 tail 和 next，避免每次重新加载
+            counted_node_ptr old_tail = tail.load(std::memory_order_acquire);
+            counted_node_ptr next     = ptr->next.load(std::memory_order_acquire);
+
+            // 如果 head==tail，可能队列真的空，也可能 tail 落后
+            if (ptr == old_tail.ptr)
             {
+                if (next.ptr == nullptr)
+                {
+                    // 真正空：放弃引用，返回空
+                    ptr->release_ref();
+                    return std::unique_ptr<T>();
+                }
+                // tail 落后：帮它推进到 next，然后重试
+                set_new_tail(old_tail, next);
+                continue;  // 重新从 head.load() 开始
+            }
+            /**/
+
+           /* ======= 这里是原书的版本 ====== 
+           if(ptr == tail.load().ptr)
+           {
                 ptr->release_ref();
                 return std::unique_ptr<T>();
-            }
-            if(head.compare_exchange_strong(old_head,ptr->next))
+           }
+            counted_node_ptr next = ptr->next.load(std::memory_order_acquire);
+            /* ============================*/
+            
+            if (head.compare_exchange_strong(
+                    old_head, next,
+                    std::memory_order_acquire,
+                    std::memory_order_relaxed))
             {
                 T* const res=ptr->data.exchange(nullptr);
                 free_external_counter(old_head);
