@@ -1,3 +1,4 @@
+// #include "mpmc_queue_1.hpp"
 #include "mpmc_queue.hpp"
 
 #include <chrono>
@@ -74,8 +75,10 @@ int main(int argc, char** argv)
     }
 
     const auto t0 = steady_clock::now();
-    std::this_thread::sleep_for(seconds(SLEEP_TIME));
-    stop.store(true, std::memory_order_relaxed);     // ★ 通知全部线程收尾
+    if(SLEEP_TIME){
+        std::this_thread::sleep_for(seconds(SLEEP_TIME));
+        stop.store(true, std::memory_order_relaxed);     // ★ 通知全部线程收尾
+    }
 
     for (auto& th : producers)  th.join();
     for (auto& th : consumers)  th.join();
