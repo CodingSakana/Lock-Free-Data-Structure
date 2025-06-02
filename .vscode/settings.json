@@ -62,6 +62,7 @@
         "sstream": "cpp",
         "variant": "cpp",
         "barrier": "cpp",
-        "cstring": "cpp"
+        "cstring": "cpp",
+        "csignal": "cpp"
     }
 }

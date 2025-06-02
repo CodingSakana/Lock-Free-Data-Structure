@@ -5,14 +5,17 @@
 #include <chrono>
 #include <unordered_map>
 #include <mutex>
-#include "mpsc_queue_v2.0.hpp"
+// #include "mpsc_queue_v3.0.hpp"
+#include "lock_mpmc_queue.hpp"
+
+// g++ test/queue_mpsc_test.cpp -O3 -Iinclude -o mpsc_test -pthread
 
 struct Item {
     int producer_id;
     int sequence;
 };
 
-MPSCQueue<Item> queue;
+MPMCQueue<Item> queue;
 
 constexpr int PRODUCER_COUNT = 4;
 constexpr int TEST_SECONDS = 5;

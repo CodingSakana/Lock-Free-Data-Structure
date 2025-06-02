@@ -7,12 +7,14 @@
 #include <cstddef>
 #include <optional>
 
+using TestSPSCQueue = LockFreeSPSCQueue<int, 1024>;
+
 template<typename T, size_t Capacity>
-class SPSCQueue {
+class LockFreeSPSCQueue {
     static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be a power of two");     // 性能优化，避免用 % 。
 
 public:
-    SPSCQueue() : head_(0), tail_(0) {}
+    LockFreeSPSCQueue() : head_(0), tail_(0) {}
 
     bool enqueue(const T& item);
     std::optional<T> dequeue();
@@ -24,7 +26,7 @@ private:
 };
 
 template<typename T, size_t Capacity>
-bool SPSCQueue<T, Capacity>::enqueue(const T& item){
+bool LockFreeSPSCQueue<T, Capacity>::enqueue(const T& item){
     size_t head = head_.load(std::memory_order_relaxed);
     size_t tail = tail_.load(std::memory_order_acquire);
 
@@ -36,7 +38,7 @@ bool SPSCQueue<T, Capacity>::enqueue(const T& item){
 }
 
 template<typename T, size_t Capacity>
-std::optional<T> SPSCQueue<T, Capacity>::dequeue(){
+std::optional<T> LockFreeSPSCQueue<T, Capacity>::dequeue(){
     size_t tail = tail_.load(std::memory_order_relaxed);
     size_t head = head_.load(std::memory_order_acquire);
 

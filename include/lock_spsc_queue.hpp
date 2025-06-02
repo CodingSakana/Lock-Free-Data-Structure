@@ -1,6 +1,6 @@
-// lock_spsc_queue.hpp
-#ifndef LOCK_SPSC_QUEUE_HPP
-#define LOCK_SPSC_QUEUE_HPP
+// 基于 mutex 的普通 LockSPSCQueue
+
+#pragma once
 
 #include <array>
 #include <mutex>
@@ -8,10 +8,12 @@
 #include <cstddef>
 #include <stdexcept>
 
+using TestSPSCQueue = LockSPSCQueue<int, 1024>;
+
 template<typename T, std::size_t Capacity>
-class SPSCQueue {
+class LockSPSCQueue {
 public:
-    SPSCQueue()
+    LockSPSCQueue()
         : head_(0), tail_(0), count_(0)
     {
         if (Capacity == 0) {
@@ -19,11 +21,11 @@ public:
         }
     }
 
-    ~SPSCQueue() = default;
+    ~LockSPSCQueue() = default;
 
     // 禁止拷贝和赋值
-    SPSCQueue(const SPSCQueue&) = delete;
-    SPSCQueue& operator=(const SPSCQueue&) = delete;
+    LockSPSCQueue(const LockSPSCQueue&) = delete;
+    LockSPSCQueue& operator=(const LockSPSCQueue&) = delete;
 
     // 尝试将 value 推入队尾；如果队满返回 false，否则返回 true
     bool enqueue(const T& value) {
@@ -64,5 +66,3 @@ private:
     std::size_t tail_;   // 下一个可写入元素的位置索引
     std::size_t count_;  // 当前缓冲区中元素的数量
 };
-
-#endif // LOCK_SPSC_QUEUE_HPP

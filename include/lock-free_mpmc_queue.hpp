@@ -2,8 +2,9 @@
 
 #include <atomic>
 #include <memory>
+
 template<typename T>
-class lock_free_queue
+class LockFreeMPMCQueue
 {
 private:
     struct node;
@@ -111,19 +112,19 @@ private:
     }
 
 public:
-    lock_free_queue():
+    LockFreeMPMCQueue():
         head({1, new node}), tail(head.load())
     {}
-    lock_free_queue(const lock_free_queue& other) = delete;
-    lock_free_queue& operator= (const lock_free_queue& other) = delete;
-    ~lock_free_queue()
+    LockFreeMPMCQueue(const LockFreeMPMCQueue& other) = delete;
+    LockFreeMPMCQueue& operator= (const LockFreeMPMCQueue& other) = delete;
+    ~LockFreeMPMCQueue()
     {
-        while(pop());   // 不断弹出并丢弃
+        while(dequeue());   // 不断弹出并丢弃
         counted_node_ptr const node = head.load();
         delete node.ptr;   // 删除 dummy 节点
     }
 
-    void push(T new_value)
+    void enqueue(T new_value)
     {
         std::unique_ptr<T> new_data(new T(new_value));
         counted_node_ptr new_next;
@@ -134,6 +135,8 @@ public:
         {
             increase_external_count(tail,old_tail);
             T* old_data=nullptr;
+            auto tempData = old_tail.ptr->data;
+            
             if(old_tail.ptr->data.compare_exchange_strong(
                     old_data, new_data.get()))
             {
@@ -162,7 +165,7 @@ public:
         }
     }
     
-    std::unique_ptr<T> pop()
+    std::unique_ptr<T> dequeue()
     {
         counted_node_ptr old_head=head.load();
         for(;;)
@@ -170,7 +173,7 @@ public:
             increase_external_count(head,old_head);
             node* const ptr=old_head.ptr;
 
-            /**/
+            /*
             // 先抓一次 tail 和 next，避免每次重新加载
             counted_node_ptr old_tail = tail.load();
             counted_node_ptr next     = ptr->next.load();
@@ -188,9 +191,9 @@ public:
                 set_new_tail(old_tail, next);
                 continue;  // 重新从 head.load() 开始
             }
-            /**/
+            */
 
-           /* ======= 这里是原书的版本 ====== 
+           /* ======= 这里是原书的版本 ====== */
            if(ptr == tail.load().ptr)
            {
                 ptr->release_ref();
@@ -227,3 +230,5 @@ public:
         .ptr == nullptr;
     }
 };
+
+using TestMPMCQueue = LockFreeMPMCQueue<int>;

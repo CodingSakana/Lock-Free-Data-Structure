@@ -9,7 +9,7 @@
 
 // 工业级 MPSC 队列 + 内存池（带双宽度 CAS 防 ABA）
 
-namespace util {
+using TestMPSCQueue = LockFreeMPSCQueue<int>;
 
 // 包含指针与版本号
 template <typename T>
@@ -56,7 +56,7 @@ public:
 
 // MPSC 队列实现
 template <typename T>
-class MPSCQueue {
+class LockFreeMPSCQueue {
 private:
     struct Node {
         std::optional<T> data;
@@ -73,14 +73,14 @@ private:
     alignas(64) AtomicTaggedPtr<Node> freeStack_;  char pad2[64 - sizeof(AtomicTaggedPtr<Node>)];
 
 public:
-    MPSCQueue()
+    LockFreeMPSCQueue()
       : head_(nullptr), tail_(nullptr), freeStack_(TaggedPtr<Node>{nullptr,0}) {
         Node* dummy = new Node();
         head_.store(dummy, std::memory_order_relaxed);
         tail_.store(dummy, std::memory_order_relaxed);
     }
 
-    ~MPSCQueue() {
+    ~LockFreeMPSCQueue() {
         // 清空队列
         Node* p = head_.load(std::memory_order_relaxed);
         while (p) {
@@ -143,5 +143,3 @@ public:
         return res;
     }
 };
-
-} // namespace util

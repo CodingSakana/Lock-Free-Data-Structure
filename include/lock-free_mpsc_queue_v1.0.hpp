@@ -9,8 +9,10 @@ mpsc队列实现
 #include <optional>
 #include <memory>
 
+using TestMPSCQueue = LockFreeMPSCQueue<int>;
+
 template<typename T>
-class MPSCQueue{
+class LockFreeMPSCQueue{
 private:
     struct Node{
         std::optional<T> data;
@@ -25,12 +27,12 @@ private:
     std::atomic<Node*> tail;
 
 public:
-    MPSCQueue():head(nullptr), tail(nullptr){
+    LockFreeMPSCQueue():head(nullptr), tail(nullptr){
         Node* dummy = new Node();
         head = dummy;
         tail.store(dummy);
     }
-    ~MPSCQueue(){delete head.load();}
+    ~LockFreeMPSCQueue(){delete head.load();}
 
     template<typename U>
     void enqueue(U&& value);
@@ -39,14 +41,14 @@ public:
 
 template<typename T>
 template<typename U>
-void MPSCQueue<T>::enqueue(U&& value){      // 多个生产者
+void LockFreeMPSCQueue<T>::enqueue(U&& value){      // 多个生产者
     Node* newNode = new Node(std::forward<U>(value));
     auto prev = tail.exchange(newNode, std::memory_order_relaxed);     // 很华丽的写法
     prev->next.store(newNode, std::memory_order_release);       // 确保写入数据对别的线程可见：在最后写共享指针时加 release
 }
 
 template<typename T>
-std::optional<T> MPSCQueue<T>::dequeue() {
+std::optional<T> LockFreeMPSCQueue<T>::dequeue() {
     Node* next = head.load()->next.load(std::memory_order_acquire);    // 确保看到的数据是构造完成的：在第一次读共享指针时加 acquire
     if (next == nullptr) {
         return std::nullopt; // 队列为空

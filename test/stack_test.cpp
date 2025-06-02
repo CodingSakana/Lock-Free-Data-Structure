@@ -6,7 +6,7 @@
 #include "stack_v1.0.hpp"
 
 void singleThreadTest() {
-    LockFreeStack<int> stack;
+    MPMCStack<int> stack;
 
     assert(stack.empty());
 
