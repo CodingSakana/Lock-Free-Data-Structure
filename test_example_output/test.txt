@@ -1,0 +1,6 @@
+[ 66%] Built target full_test
+[100%] Run functional tests
+[PASS] SPSC 功能测试
+[PASS] MPSC 功能测试
+全部功能测试通过！
+[100%] Built target test
