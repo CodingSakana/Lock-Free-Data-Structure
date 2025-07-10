@@ -81,5 +81,3 @@ public:
         return head == nullptr;
     }
 };
-
-using TestMPMCStack = LockMPMCStack<int>;

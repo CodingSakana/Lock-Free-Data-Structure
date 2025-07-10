@@ -99,5 +99,3 @@ public:
         }
     }
 };
-
-using TestMPMCStack = LockFreeMPMCStack<int>;

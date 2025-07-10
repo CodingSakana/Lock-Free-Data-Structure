@@ -8,8 +8,6 @@
 #include <cstddef>
 #include <stdexcept>
 
-using TestSPSCQueue = LockSPSCQueue<int, 1024>;
-
 template<typename T, std::size_t Capacity>
 class LockSPSCQueue {
 public:

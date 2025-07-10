@@ -7,8 +7,6 @@
 #include <cstddef>
 #include <optional>
 
-using TestSPSCQueue = LockFreeSPSCQueue<int, 1024>;
-
 template<typename T, size_t Capacity>
 class LockFreeSPSCQueue {
     static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be a power of two");     // 性能优化，避免用 % 。
