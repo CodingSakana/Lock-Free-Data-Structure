@@ -13,8 +13,6 @@
 #include "lock_spsc_queue.h"
 #include "lock-free_mpsc_queue.h"
 #include "lock_mpsc_queue.h"
-#include "lock-free_mpmc_stack.h"
-#include "lock_mpmc_stack.h"
 
 using Clock = std::chrono::high_resolution_clock;
 
@@ -99,50 +97,10 @@ void perf_mpsc() {
               << " s, speedup = " << (t_lk / t_lf) << "x\n";
 }
 
-void perf_mpmc_stack() {
-    constexpr int PRODUCERS = 2, CONSUMERS = 2;
-    constexpr int OPS = 500'000;
-    double t_lf = bench([&](){
-        LockFreeMPMCStack<int> st;
-        std::vector<std::thread> pros, cons;
-        for (int p = 0; p < PRODUCERS; ++p)
-            pros.emplace_back([&](){ for (int i = 0; i < OPS; ++i) st.push(i); });
-        for (int c = 0; c < CONSUMERS; ++c)
-            cons.emplace_back([&](){
-                int cnt = 0;
-                while (cnt < PRODUCERS * OPS / CONSUMERS) {
-                    auto v = st.pop();
-                    if (v) ++cnt;
-                }
-            });
-        for (auto &t : pros) t.join();
-        for (auto &t : cons) t.join();
-    });
-    double t_lk = bench([&](){
-        LockMPMCStack<int> st;
-        std::vector<std::thread> pros, cons;
-        for (int p = 0; p < PRODUCERS; ++p)
-            pros.emplace_back([&](){ for (int i = 0; i < OPS; ++i) st.push(i); });
-        for (int c = 0; c < CONSUMERS; ++c)
-            cons.emplace_back([&](){
-                int cnt = 0;
-                while (cnt < PRODUCERS * OPS / CONSUMERS) {
-                    auto v = st.pop();
-                    if (v) ++cnt;
-                }
-            });
-        for (auto &t : pros) t.join();
-        for (auto &t : cons) t.join();
-    });
-    std::cout << "MPMC stack: lock-free = " << t_lf << " s, lock = " << t_lk
-              << " s, speedup = " << (t_lk / t_lf) << "x\n";
-}
-
 int main() {
     std::cout << "=== 性能测试开始 ===\n";
     perf_spsc();
     perf_mpsc();
-    perf_mpmc_stack();
     std::cout << "=== 性能测试结束 ===\n";
     return 0;
 }

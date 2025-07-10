@@ -30,7 +30,7 @@ public:
 
     template <typename U>
     void enqueue(U&& v) {
-        Node* n = new Node(std::forward<U>(v));
+        Node* n = new Node(std::move(v));
         Node* prev = tail.exchange(n, std::memory_order_acq_rel);
         prev->next.store(n, std::memory_order_release);
     }
